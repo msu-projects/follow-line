@@ -84,7 +84,7 @@ void stopMotors() {
 // ========= WEIGHTED POSITION =========
 // Returns a position value from -4 (hard left) to +4 (hard right).
 // Returns lastPos and sets *allBlack / *allWhite flags.
-int readPosition(bool *allBlack, bool *allWhite) {
+int readPosition(bool *allBlack, bool *allWhite, int *sensorCount) {
   // Sensor weights: S0=far-left … S4=far-right
   const int weight[5] = {-4, -2, 0, 2, 4};
   int b[5];
@@ -102,6 +102,7 @@ int readPosition(bool *allBlack, bool *allWhite) {
 
   *allBlack = (count == 5);   // junction / solid block
   *allWhite = (count == 0);   // nothing seen
+  *sensorCount = count;
 
   if (count == 0) {
 #if DEBUG_SERIAL
@@ -124,14 +125,8 @@ int readPosition(bool *allBlack, bool *allWhite) {
 // ========================================================
 void loop() {
   bool allBlack, allWhite;
-  int pos = readPosition(&allBlack, &allWhite);
-
-  // -------- ALL BLACK = junction, just go straight --------
-  if (allBlack) {
-    lineWasLost = false;
-    setMotor(baseSpeed, baseSpeed);
-    return;
-  }
+  int sensorCount;
+  int pos = readPosition(&allBlack, &allWhite, &sensorCount);
 
   // -------- LINE LOST --------
   if (allWhite) {
@@ -161,6 +156,12 @@ void loop() {
 
   // -------- LINE FOUND --------
   lineWasLost = false;
+
+  // -------- ALL BLACK = junction, just go straight --------
+  if (allBlack) {
+    setMotor(baseSpeed, baseSpeed);
+    return;
+  }
 
   // -------- PID --------
   float error = (float)pos;
